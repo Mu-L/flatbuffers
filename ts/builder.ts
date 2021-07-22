@@ -586,7 +586,7 @@ export class Builder {
      * 
      * @returns offset of obj
      */
-    createObjectOffset(obj: string | IGeneratedObject): Offset {
+    createObjectOffset(obj: string | any): Offset {
       if(obj === null) {
         return 0
       }
@@ -603,8 +603,8 @@ export class Builder {
      * 
      * @returns list of offsets of each non null object
      */
-    createObjectOffsetList(list: string[]): Offset[] {
-      const ret = [];
+    createObjectOffsetList(list: string[] | any[]): Offset[] {
+      const ret: number[] = [];
   
       for(let i = 0; i < list.length; ++i) {
         const val = list[i];
@@ -620,7 +620,7 @@ export class Builder {
       return ret;
     }
   
-    createStructOffsetList(list: string[], startFunc: (builder: Builder, length: number) => void): Offset {
+    createStructOffsetList(list: string[] | any[], startFunc: (builder: Builder, length: number) => void): Offset {
       startFunc(this, list.length);
       this.createObjectOffsetList(list);
       return this.endVector();

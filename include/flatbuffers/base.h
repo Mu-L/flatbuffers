@@ -1,5 +1,5 @@
 #ifndef FLATBUFFERS_BASE_H_
-#define FLATBUFFERS_BASE_H_
+#  define FLATBUFFERS_BASE_H_
 
 // clang-format off
 
@@ -142,8 +142,8 @@
   #endif
 #endif // !defined(FLATBUFFERS_LITTLEENDIAN)
 
-#define FLATBUFFERS_VERSION_MAJOR 1
-#define FLATBUFFERS_VERSION_MINOR 12
+#define FLATBUFFERS_VERSION_MAJOR 2
+#define FLATBUFFERS_VERSION_MINOR 0
 #define FLATBUFFERS_VERSION_REVISION 0
 #define FLATBUFFERS_STRING_EXPAND(X) #X
 #define FLATBUFFERS_STRING(X) FLATBUFFERS_STRING_EXPAND(X)
@@ -197,9 +197,15 @@ namespace flatbuffers {
 #if (!defined(_MSC_VER) || _MSC_FULL_VER >= 180020827) && \
     (!defined(__GNUC__) || (__GNUC__ * 100 + __GNUC_MINOR__ >= 404)) || \
     defined(__clang__)
-  #define FLATBUFFERS_DELETE_FUNC(func) func = delete;
+  #define FLATBUFFERS_DELETE_FUNC(func) func = delete
 #else
-  #define FLATBUFFERS_DELETE_FUNC(func) private: func;
+  #define FLATBUFFERS_DELETE_FUNC(func) private: func
+#endif
+
+#if (!defined(_MSC_VER) || _MSC_VER >= 1900) && \
+    (!defined(__GNUC__) || (__GNUC__ * 100 + __GNUC_MINOR__ >= 409)) || \
+    defined(__clang__)
+  #define FLATBUFFERS_DEFAULT_DECLARATION
 #endif
 
 // Check if we can use template aliases
@@ -240,6 +246,11 @@ namespace flatbuffers {
     #endif
   #endif // __has_include
 #endif // !FLATBUFFERS_HAS_STRING_VIEW
+
+#ifndef FLATBUFFERS_GENERAL_HEAP_ALLOC_OK
+  // Allow heap allocations to be used
+  #define FLATBUFFERS_GENERAL_HEAP_ALLOC_OK 1
+#endif // !FLATBUFFERS_GENERAL_HEAP_ALLOC_OK
 
 #ifndef FLATBUFFERS_HAS_NEW_STRTOD
   // Modern (C++11) strtod and strtof functions are available for use.
@@ -323,6 +334,11 @@ typedef uintmax_t largest_scalar_t;
 
 // We support aligning the contents of buffers up to this size.
 #define FLATBUFFERS_MAX_ALIGNMENT 16
+
+inline bool VerifyAlignmentRequirements(size_t align, size_t min_align = 1) {
+  return (min_align <= align) && (align <= (FLATBUFFERS_MAX_ALIGNMENT)) &&
+         (align & (align - 1)) == 0;  // must be power of 2
+}
 
 #if defined(_MSC_VER)
   #pragma warning(disable: 4351) // C4351: new behavior: elements of array ... will be default initialized

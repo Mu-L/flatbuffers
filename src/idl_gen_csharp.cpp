@@ -553,7 +553,7 @@ class CSharpGenerator : public BaseGenerator {
       // Force compile time error if not using the same version runtime.
       code += "  public static void ValidateVersion() {";
       code += " FlatBufferConstants.";
-      code += "FLATBUFFERS_1_12_0(); ";
+      code += "FLATBUFFERS_2_0_0(); ";
       code += "}\n";
 
       // Generate a special accessor for the table that when used as the root
@@ -618,8 +618,9 @@ class CSharpGenerator : public BaseGenerator {
       std::string dest_mask = "";
       std::string dest_cast = DestinationCast(field.value.type);
       std::string src_cast = SourceCast(field.value.type);
-      std::string method_start = "  public " + type_name_dest + optional + " " +
-                                 MakeCamel(field.name, true);
+      std::string field_name_camel = MakeCamel(field.name, true);
+      std::string method_start =
+          "  public " + type_name_dest + optional + " " + field_name_camel;
       std::string obj = "(new " + type_name + "())";
 
       // Most field accessors need to retrieve and test the field offset first,
@@ -762,6 +763,30 @@ class CSharpGenerator : public BaseGenerator {
                       "AsString()";
               code += offset_prefix + GenGetter(Type(BASE_TYPE_STRING));
               code += "(o + __p.bb_pos) : null";
+            }
+            // As<> accesors for Unions
+            // Loop through all the possible union types and generate an As
+            // accessor that casts to the correct type.
+            for (auto uit = field.value.type.enum_def->Vals().begin();
+                 uit != field.value.type.enum_def->Vals().end(); ++uit) {
+              auto val = *uit;
+              if (val->union_type.base_type == BASE_TYPE_NONE) { continue; }
+              auto union_field_type_name = GenTypeGet(val->union_type);
+              code += member_suffix + "}\n";
+              if (val->union_type.base_type == BASE_TYPE_STRUCT &&
+                  val->union_type.struct_def->attributes.Lookup("private")) {
+                code += "  internal ";
+              } else {
+                code += "  public ";
+              }
+              code += union_field_type_name + " ";
+              code += field_name_camel + "As" + val->name + "() { return ";
+              code += field_name_camel;
+              if (IsString(val->union_type)) {
+                code += "AsString()";
+              } else {
+                code += "<" + union_field_type_name + ">().Value";
+              }
             }
             break;
           default: FLATBUFFERS_ASSERT(0);
@@ -1117,7 +1142,7 @@ class CSharpGenerator : public BaseGenerator {
       for (auto it = struct_def.fields.vec.begin();
            it != struct_def.fields.vec.end(); ++it) {
         auto &field = **it;
-        if (!field.deprecated && field.required) {
+        if (!field.deprecated && field.IsRequired()) {
           code += "    builder.Required(o, ";
           code += NumToString(field.value.offset);
           code += ");  // " + field.name + "\n";
@@ -1490,10 +1515,11 @@ class CSharpGenerator : public BaseGenerator {
         case BASE_TYPE_ARRAY: {
           auto type_name = GenTypeGet_ObjectAPI(field.value.type, opts);
           auto length_str = NumToString(field.value.type.fixed_length);
-          auto unpack_method = field.value.type.struct_def == nullptr ? ""
-                               : field.value.type.struct_def->fixed
-                                   ? ".UnPack()"
-                                   : "?.UnPack()";
+          auto unpack_method = field.value.type.struct_def == nullptr
+                                   ? ""
+                                   : field.value.type.struct_def->fixed
+                                         ? ".UnPack()"
+                                         : "?.UnPack()";
           code += start + "new " + type_name.substr(0, type_name.length() - 1) +
                   length_str + "];\n";
           code += "    for (var _j = 0; _j < " + length_str + "; ++_j) { _o." +
@@ -1934,6 +1960,7 @@ class CSharpGenerator : public BaseGenerator {
       if (field.value.type.base_type == BASE_TYPE_UTYPE) continue;
       if (field.value.type.element == BASE_TYPE_UTYPE) continue;
       auto type_name = GenTypeGet_ObjectAPI(field.value.type, opts);
+      if (field.IsScalarOptional()) type_name += "?";
       auto camel_name = MakeCamel(field.name, true);
       if (opts.cs_gen_json_serializer) {
         if (IsUnion(field.value.type)) {

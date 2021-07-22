@@ -56,10 +56,16 @@ struct Ability {
   distance:uint;
 }
 
+struct StructOfStructs {
+  a: Ability;
+  b: Test;
+  c: Ability;
+}
+
 table Stat {
   id:string;
   val:long;
-  count:ushort;
+  count:ushort (key);
 }
 
 table Referrable {
@@ -71,7 +77,7 @@ table Monster {
   pos:Vec3 (id: 0);
   hp:short = 100 (id: 2);
   mana:short = 150 (id: 1);
-  name:string (id: 3, required, key);
+  name:string (id: 3, key);
   color:Color = Blue (id: 6);
   inventory:[ubyte] (id: 5);
   friendly:bool = false (deprecated, priority: 1, id: 4);
@@ -116,6 +122,8 @@ table Monster {
   any_ambiguous:AnyAmbiguousAliases (id:46);
   vector_of_enums:[Color] (id:47);
   signed_enum:Race = None (id:48);
+  testrequirednestedflatbuffer:[ubyte] (id:49, nested_flatbuffer: "Monster");
+  scalar_key_sorted_tables:[Stat] (id: 50);
 }
 
 table TypeAliases {
